@@ -26,6 +26,7 @@ import ResidentManagementPage from './pages/ResidentManagementPage';
 import SystemAuditLogsPage from './pages/SystemAuditLogsPage';
 import AdminFleetLiveMap from './components/AdminFleetLiveMap';
 import AdminProfilePage from './pages/AdminProfilePage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
 import { soundManager } from '../../utils/audioAlerts';
 import { ShieldX, ArrowLeft } from 'lucide-react';
 
@@ -276,6 +277,29 @@ export default function AdminApp() {
     name: '', email: '', phone: '', vehicle: '', sector: 'Unassigned',
     gender: 'Male', aadharNumber: '', drivingLicence: '', dob: '', bloodGroup: 'O+'
   });
+
+  // Admin Console Theme State ('light' | 'dark')
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('tmt_admin_theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('tmt_admin_theme', theme);
+    } catch {}
+    return () => {
+      document.documentElement.classList.remove('dark');
+    };
+  }, [theme]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -713,6 +737,8 @@ export default function AdminApp() {
       onMarkAllRead={markAllRead}
       onClearAll={clearAllNotifications}
       onNotificationClick={handleNotificationClick}
+      theme={theme}
+      setTheme={setTheme}
     >
       {activeTab !== 'overview' && activeTab !== 'profile' && TAB_PERMISSION_MAP[activeTab] && !hasPermission(TAB_PERMISSION_MAP[activeTab]) ? (
         <RestrictedModuleView 
@@ -987,10 +1013,12 @@ export default function AdminApp() {
       )}
 
       {activeTab === 'settings' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200">
-          <h3 className="font-bold text-base text-[#0F172A] mb-2">Municipal System Configurations</h3>
-          <p className="text-xs text-slate-400">Telemetry rates, automated dispatch rules, and waste points multipliers.</p>
-        </div>
+        <AdminSettingsPage
+          theme={theme}
+          setTheme={setTheme}
+          data={data}
+          showToast={showToast}
+        />
       )}
         </>
       )}

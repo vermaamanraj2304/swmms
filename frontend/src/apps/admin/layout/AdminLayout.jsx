@@ -6,7 +6,9 @@ import {
   X, 
   ChevronRight, 
   AlertTriangle, 
-  LogOut 
+  LogOut,
+  Sun,
+  Moon
 } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminNotificationBell from '../components/AdminNotificationBell';
@@ -78,6 +80,8 @@ export default function AdminLayout({
   onMarkAllRead,
   onClearAll,
   onNotificationClick,
+  theme = 'light',
+  setTheme,
   children
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -138,7 +142,7 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased flex flex-col">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'} font-sans antialiased flex flex-col transition-colors duration-200`}>
       {/* Toast Alert */}
       {toast && (
         <div className={`fixed top-20 right-5 z-50 px-5 py-3 rounded-2xl shadow-xl font-medium text-sm flex items-center gap-3 ${
@@ -150,14 +154,16 @@ export default function AdminLayout({
       )}
 
       {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 h-16 shadow-xs">
+      <header className={`${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border-b sticky top-0 z-30 h-16 shadow-xs transition-colors duration-200`}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-3">
           {/* Left: Mobile Menu Trigger + Brand */}
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition mr-0.5 -ml-1 cursor-pointer focus:outline-none"
+              className={`lg:hidden p-2 rounded-xl transition mr-0.5 -ml-1 cursor-pointer focus:outline-none ${
+                theme === 'dark' ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
               aria-label="Open mobile navigation menu"
             >
               <Menu className="w-5 h-5" />
@@ -167,23 +173,25 @@ export default function AdminLayout({
               onClick={() => setActiveTab('overview')}
               className="flex items-center gap-2.5 min-w-0 cursor-pointer"
             >
-              <div className="w-9 h-9 bg-[#0F172A] rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
+              <div className="w-9 h-9 bg-[#0F172A] rounded-xl flex items-center justify-center text-white shadow-sm shrink-0 border border-slate-800">
                 <Building2 className="w-5 h-5 text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <h1 className="font-bold text-sm text-[#0F172A] leading-tight truncate">SWM&MS</h1>
+                <h1 className={`font-bold text-sm leading-tight truncate ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>SWM&MS</h1>
                 <span className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block truncate">Greater Noida</span>
               </div>
             </div>
           </div>
 
           {/* Center: Active View Breadcrumb Indicator (Desktop & Tablet) */}
-          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 bg-slate-100/80 rounded-full border border-slate-200/80 text-xs font-semibold text-slate-700">
+          <div className={`hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold ${
+            theme === 'dark' ? 'bg-slate-800/80 border-slate-700 text-slate-200' : 'bg-slate-100/80 border-slate-200/80 text-slate-700'
+          }`}>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="truncate max-w-[220px]">{getActiveTabLabel(activeTab)}</span>
           </div>
 
-          {/* Right Header: SOS Alert, Notification Bell, Division Tag, HQ Avatar & Logout */}
+          {/* Right Header: SOS Alert, Theme Toggle, Notification Bell, Division Tag, HQ Avatar & Logout */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {activeEmergenciesCount > 0 && (
               <button
@@ -200,6 +208,21 @@ export default function AdminLayout({
               </button>
             )}
 
+            {/* Quick Dark / Light Theme Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                if (setTheme) {
+                  setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+                }
+              }}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              title={theme === 'dark' ? 'Switch to Day Shift (Light Mode)' : 'Switch to Night Command (Dark Mode)'}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            </button>
+
             {/* Municipal Command Notification Bell */}
             <AdminNotificationBell 
               notifications={notifications}
@@ -214,7 +237,7 @@ export default function AdminLayout({
               className="text-right hidden sm:block cursor-pointer group"
               title="View Administrator Profile"
             >
-              <span className="font-bold text-xs text-[#0F172A] block leading-tight truncate max-w-[220px] group-hover:text-[#00B074] transition">
+              <span className={`font-bold text-xs block leading-tight truncate max-w-[220px] group-hover:text-[#00B074] transition ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>
                 {adminUser?.name || 'Greater Noida Municipal Authority'}
               </span>
               <span className="text-[10px] text-slate-400 block truncate max-w-[220px]">

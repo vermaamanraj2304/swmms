@@ -72,6 +72,29 @@ export default function ResidentApp() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
+  // Resident Portal Theme State ('light' | 'dark')
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('tmt_resident_theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('tmt_resident_theme', theme);
+    } catch {}
+    return () => {
+      document.documentElement.classList.remove('dark');
+    };
+  }, [theme]);
+
   // Proximity & Doorstep Siren Alert State
   const [proximityAlert, setProximityAlert] = useState(null);
   const nearbyTriggeredRef = useRef(false);
@@ -943,9 +966,11 @@ export default function ResidentApp() {
       onSilenceSiren={handleSilenceSiren}
       notifications={notifications}
       unreadCount={unreadCount}
-      onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+      onMarkAllRead={handleMarkAllNotificationsRead}
       onClearNotifications={handleClearNotifications}
       onNotificationClick={handleNotificationClick}
+      theme={theme}
+      setTheme={setTheme}
     >
       {activeTab === 'dashboard' && (
         <ResidentDashboardPage data={data} setActiveTab={setActiveTab} />
