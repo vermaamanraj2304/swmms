@@ -9,6 +9,7 @@ import DriverAssignedHousesPage from './pages/DriverAssignedHousesPage';
 import DriverNearbyHousesPage from './pages/DriverNearbyHousesPage';
 import DriverOrdersPage from './pages/DriverOrdersPage';
 import DriverProfilePage from './pages/DriverProfilePage';
+import DriverSettingsPage from './pages/DriverSettingsPage';
 import RecordWeightModal from './components/RecordWeightModal';
 import { soundManager } from '../../utils/audioAlerts';
 
@@ -56,6 +57,30 @@ export default function DriverApp() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+
+  // Terminal Theme State ('light' | 'dark')
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('tmt_driver_theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('tmt_driver_theme', theme);
+    } catch {}
+    return () => {
+      // Cleanup on unmount so other portals remain clean
+      document.documentElement.classList.remove('dark');
+    };
+  }, [theme]);
 
   // Driver Terminal Notifications state
   const [notifications, setNotifications] = useState(() => {
@@ -639,6 +664,8 @@ export default function DriverApp() {
       onMarkAllRead={markAllRead}
       onClearAll={clearAllNotifications}
       onNotificationClick={handleNotificationClick}
+      theme={theme}
+      setTheme={setTheme}
     >
       {activeTab === 'dashboard' && (
         <DriverDashboardPage 
@@ -710,6 +737,17 @@ export default function DriverApp() {
           totalHouses={data?.routeStops?.length || data?.assignedHouses?.length || 0}
           clearedHouses={(data?.routeStops || []).filter(s => s.status === 'PICKED').length}
           onRefresh={fetchDashboard}
+          showToast={showToast}
+        />
+      )}
+
+      {activeTab === 'settings' && (
+        <DriverSettingsPage
+          theme={theme}
+          setTheme={setTheme}
+          isOnDuty={isOnDuty}
+          onToggleDuty={handleToggleDuty}
+          data={data}
           showToast={showToast}
         />
       )}

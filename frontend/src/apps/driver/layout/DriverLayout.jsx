@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Menu, X, ChevronRight, LogOut, Truck } from 'lucide-react';
+import { Sparkles, Menu, X, ChevronRight, LogOut, Truck, Sun, Moon } from 'lucide-react';
 import DriverSidebar from './DriverSidebar';
 import DriverNotificationBell from '../components/DriverNotificationBell';
 
@@ -30,6 +30,8 @@ export default function DriverLayout({
   onMarkAllRead,
   onClearAll,
   onNotificationClick,
+  theme = 'light',
+  setTheme,
   children
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,7 +64,7 @@ export default function DriverLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased flex flex-col">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'} font-sans antialiased flex flex-col transition-colors duration-200`}>
       {/* Toast Alert */}
       {toast && (
         <div className="fixed top-20 right-5 z-50 bg-[#00B074] text-white px-5 py-3 rounded-2xl shadow-xl font-medium text-sm flex items-center gap-3">
@@ -72,14 +74,16 @@ export default function DriverLayout({
       )}
 
       {/* Driver Terminal Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 h-16 shadow-xs">
+      <header className={`${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border-b sticky top-0 z-30 h-16 shadow-xs transition-colors duration-200`}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-3">
           {/* Left: Hamburger trigger + Brand */}
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition mr-0.5 -ml-1 cursor-pointer focus:outline-none shrink-0"
+              className={`lg:hidden p-2 rounded-xl transition mr-0.5 -ml-1 cursor-pointer focus:outline-none shrink-0 ${
+                theme === 'dark' ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
@@ -93,7 +97,7 @@ export default function DriverLayout({
                 <Truck className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h1 className="font-bold text-sm text-[#0F172A] leading-tight truncate">SWM&MS</h1>
+                <h1 className={`font-bold text-sm leading-tight truncate ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>SWM&MS</h1>
                 <span className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block truncate">DRIVER TERMINAL</span>
               </div>
             </div>
@@ -119,6 +123,21 @@ export default function DriverLayout({
               <span className="sm:hidden">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
               <span className="hidden sm:inline">{isOnDuty ? 'Broadcasting Shift GPS' : 'Shift Inactive (Off Duty)'}</span>
             </button> */}
+
+            {/* Quick Dark / Light Theme Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                if (setTheme) {
+                  setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+                }
+              }}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              title={theme === 'dark' ? 'Switch to Day Shift (Light Mode)' : 'Switch to Night Shift (Dark Mode)'}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            </button>
 
             {/* Notification Bell */}
             <DriverNotificationBell
@@ -170,22 +189,22 @@ export default function DriverLayout({
           />
 
           {/* Drawer Panel */}
-          <div className="relative w-80 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+          <div className={`relative w-80 max-w-[85vw] ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'} h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200`}>
             {/* Drawer Header */}
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+            <div className={`p-4 border-b flex items-center justify-between shrink-0 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 bg-[#00B074] rounded-xl flex items-center justify-center text-white shadow-xs">
                   <Truck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xs text-[#0F172A]">Driver Navigation</h3>
+                  <h3 className={`font-bold text-xs ${theme === 'dark' ? 'text-white' : 'text-[#0F172A]'}`}>Driver Navigation</h3>
                   <span className="text-[9px] font-bold text-slate-400 uppercase block">Vehicle Operations</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-200 text-slate-500 transition cursor-pointer"
+                className={`p-1.5 rounded-xl transition cursor-pointer ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -193,10 +212,10 @@ export default function DriverLayout({
             </div>
 
             {/* Quick Shift Status Bar inside Drawer */}
-            <div className="p-3 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
+            <div className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 ${theme === 'dark' ? 'bg-slate-800/60 border-slate-800' : 'bg-slate-100/70 border-slate-200'}`}>
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${isOnDuty ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-                <span className="text-xs font-bold text-slate-700">
+                <span className={`text-xs font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                   {isOnDuty ? 'Shift Active (GPS Live)' : 'Shift Inactive (Off Duty)'}
                 </span>
               </div>
@@ -223,7 +242,7 @@ export default function DriverLayout({
             </div>
 
             {/* Drawer Footer with Driver Info & Logout */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+            <div className={`p-4 border-t flex items-center justify-between shrink-0 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center gap-2 min-w-0">
                 <img 
                   src={driverAvatar} 
@@ -231,7 +250,7 @@ export default function DriverLayout({
                   className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
                 />
                 <div className="text-left min-w-0">
-                  <span className="font-bold text-xs text-slate-800 block truncate">{driverName}</span>
+                  <span className={`font-bold text-xs block truncate ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{driverName}</span>
                   <span className="text-[10px] text-slate-400 truncate block">{driverVehicle}</span>
                 </div>
               </div>

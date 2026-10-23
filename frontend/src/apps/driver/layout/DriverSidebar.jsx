@@ -82,7 +82,7 @@ export default function DriverSidebar({ activeTab, setActiveTab, data, onCloseMo
   ];
 
   return (
-    <nav className={`space-y-1 ${isMobileDrawer ? '' : 'bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs'}`}>
+    <nav className={`space-y-1 ${isMobileDrawer ? '' : 'bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs'}`}>
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
@@ -91,7 +91,9 @@ export default function DriverSidebar({ activeTab, setActiveTab, data, onCloseMo
             key={item.id}
             onClick={() => handleNavClick(item.id)}
             className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-              isActive ? 'bg-[#00B074] text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-50'
+              isActive 
+                ? 'bg-[#00B074] text-white shadow-xs font-bold' 
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
