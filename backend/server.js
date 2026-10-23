@@ -49,6 +49,26 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Root Status Endpoint (or serve frontend if dist exists)
+app.get('/', (req, res, next) => {
+  const frontendDistPath = path.resolve(__dirname, '../frontend/dist');
+  if (fs.existsSync(frontendDistPath)) {
+    return next();
+  }
+  res.json({
+    status: 'success',
+    message: '🚀 SWM&MS Smart Waste Management API Server is running',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      resident: '/api/resident',
+      driver: '/api/driver',
+      admin: '/api/admin'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
   res.json({
