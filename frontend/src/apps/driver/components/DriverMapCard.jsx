@@ -102,7 +102,7 @@ export default function DriverMapCard({
   };
 
   return (
-    <div className="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden relative h-[360px] shadow-sm flex flex-col">
+    <div className="lg:col-span-2 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative h-[360px] shadow-sm flex flex-col">
       <div className="relative flex-1 w-full h-full">
         <MapContainer
           center={driverPosition}

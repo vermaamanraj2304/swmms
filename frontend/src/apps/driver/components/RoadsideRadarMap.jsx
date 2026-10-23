@@ -86,7 +86,7 @@ export default function RoadsideRadarMap({
       </div>
 
       {/* Leaflet Map Viewport */}
-      <div className="relative w-full overflow-hidden bg-slate-950" style={{ height }}>
+      <div className="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-900" style={{ height }}>
         <MapContainer
           center={driverPosition}
           zoom={14}
