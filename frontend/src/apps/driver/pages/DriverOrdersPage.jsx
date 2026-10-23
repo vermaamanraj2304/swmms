@@ -97,6 +97,10 @@ export default function DriverOrdersPage({ showToast, onRefreshDashboard }) {
     setManualCode('');
     setCameraError(null);
     setCameraActive(false);
+    // Auto-attempt starting camera once modal DOM mounts
+    setTimeout(() => {
+      startCamera();
+    }, 250);
   };
 
   // Close scanner and cleanup camera (Instant, non-blocking)
@@ -126,7 +130,7 @@ export default function DriverOrdersPage({ showToast, onRefreshDashboard }) {
     }
   };
 
-  // Start Camera scanning using Html5Qrcode
+  // Start Camera scanning using Html5Qrcode with multi-device fallback
   const startCamera = async () => {
     setCameraError(null);
     try {
@@ -139,24 +143,59 @@ export default function DriverOrdersPage({ showToast, onRefreshDashboard }) {
         } catch {}
       }
 
+      const container = document.getElementById('qr-reader-container');
+      if (!container) return;
+
       const html5QrCode = new Html5Qrcode('qr-reader-container');
       qrScannerRef.current = html5QrCode;
 
       const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        config,
-        (decodedText) => {
-          handleVerifyDelivery(decodedText);
-        },
-        () => {
-          // Frame error (no QR code found yet in frame) - ignore
+
+      try {
+        // Try environment (rear) camera first (ideal for mobile drivers)
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          config,
+          (decodedText) => {
+            handleVerifyDelivery(decodedText);
+          },
+          () => {}
+        );
+      } catch (backCameraErr) {
+        console.warn('Back camera not found or failed, falling back to any available camera:', backCameraErr);
+        // Fallback for laptops, webcams, or desktop testing
+        const cameras = await Html5Qrcode.getCameras().catch(() => []);
+        if (cameras && cameras.length > 0) {
+          await html5QrCode.start(
+            cameras[0].id,
+            config,
+            (decodedText) => {
+              handleVerifyDelivery(decodedText);
+            },
+            () => {}
+          );
+        } else {
+          await html5QrCode.start(
+            { facingMode: 'user' },
+            config,
+            (decodedText) => {
+              handleVerifyDelivery(decodedText);
+            },
+            () => {}
+          );
         }
-      );
+      }
+
       setCameraActive(true);
     } catch (err) {
       console.warn('Camera start error:', err);
-      setCameraError('Camera access not available or permission denied. Please use the manual code input below.');
+      let msg = 'Camera access not available or permission denied. Please use the manual code input below.';
+      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+        msg = 'Camera permission denied. Please click the lock or camera icon in your browser URL bar and allow camera access.';
+      } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+        msg = 'No compatible camera found on this device. You can click "Auto Fill" below to verify.';
+      }
+      setCameraError(msg);
       setCameraActive(false);
     }
   };
