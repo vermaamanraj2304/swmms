@@ -39,6 +39,16 @@ app.use(express.json());
 // Expose Socket.io instance to Express App
 app.set('io', io);
 
+// Ensure MongoDB is connected on incoming requests (vital for serverless cold starts)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('Database connection middleware warning:', err.message);
+  }
+  next();
+});
+
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -70,12 +80,30 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;
 
-// Start DB & HTTP Server
-connectDB().then(async () => {
-  await ensureSuperadminAccount();
-  server.listen(PORT, () => {
-    console.log(`🚀 SWM&MS Production Server running on http://localhost:${PORT}`);
+// Start DB & HTTP Server (only in standalone Node / local environment, not inside Vercel serverless)
+if (!process.env.VERCEL) {
+  connectDB().then(async () => {
+    try {
+      await ensureSuperadminAccount();
+    } catch (e) {
+      console.warn('Superadmin initialization warning:', e.message);
+    }
+    server.listen(PORT, () => {
+      console.log(`🚀 SWM&MS Production Server running on http://localhost:${PORT}`);
+    });
   });
-});
+} else {
+  // In Vercel serverless, initiate background connection
+  connectDB().then(async () => {
+    try {
+      await ensureSuperadminAccount();
+    } catch (e) {
+      console.warn('Superadmin initialization warning on Vercel:', e.message);
+    }
+  }).catch((e) => {
+    console.warn('Vercel DB connection init error:', e.message);
+  });
+}
 
+export default app;
 export { app, server, io };
