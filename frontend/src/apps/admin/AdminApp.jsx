@@ -282,9 +282,9 @@ export default function AdminApp() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch('/api/admin/dashboard');
       if (res.status === 401) {
         localStorage.removeItem('tmt_admin_token');
@@ -297,6 +297,36 @@ export default function AdminApp() {
         throw new Error(json.message || 'Failed to fetch municipal command data');
       }
       setData(json);
+
+      // Sync live locations for on-duty drivers from database
+      if (json.driversList?.length > 0) {
+        setDriverLocations(prev => {
+          const updated = { ...prev };
+          json.driversList.forEach(d => {
+            const driverKey = d.customId || String(d._id) || d.name;
+            if (d.isOnDuty && d.liveLocation && d.liveLocation.lat) {
+              const lat = Number(d.liveLocation.lat);
+              const lng = Number(d.liveLocation.lng);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                updated[driverKey] = {
+                  driverId: d.customId,
+                  driverMongoId: d._id,
+                  driverName: d.name,
+                  sector: d.activeSector,
+                  vehicle: d.assignedVehicle,
+                  isOnDuty: true,
+                  lat,
+                  lng,
+                  location: d.liveLocation
+                };
+              }
+            } else if (!d.isOnDuty && updated[driverKey]) {
+              delete updated[driverKey];
+            }
+          });
+          return updated;
+        });
+      }
 
       if (json.residentsList?.length > 0 && !selectedResident) {
         setSelectedResident(json.residentsList[0]);
@@ -344,7 +374,7 @@ export default function AdminApp() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -527,7 +557,13 @@ export default function AdminApp() {
     socket.on('emergency-updated', fetchDashboard);
     socket.on('emergency-deleted', fetchDashboard);
 
+    // Silent background polling every 6s as resilient fallback for serverless deployments
+    const pollInterval = setInterval(() => {
+      fetchDashboard(true);
+    }, 6000);
+
     return () => {
+      clearInterval(pollInterval);
       socket.off('driver-location-update');
       socket.off('driver-duty-changed');
       socket.off('complaint-created');

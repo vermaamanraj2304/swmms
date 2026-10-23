@@ -26,9 +26,11 @@ export default function ResidentTrackingPage({ data, fetchDashboard, showToast, 
   const isEnRoute = emergencyItem?.status === 'ON THE WAY' || data?.assignedDriver?.emergencyStatus === 'ON THE WAY';
 
   const driverLoc = data?.assignedDriver?.liveLocation || emergencyItem?.driverLiveLocation;
-  const hasValidCoords = driverLoc && typeof driverLoc.lat === 'number' && typeof driverLoc.lng === 'number' && (driverLoc.lat !== 0 || driverLoc.lng !== 0);
-  const truckLat = hasValidCoords ? Number(driverLoc.lat) : 28.6139;
-  const truckLng = hasValidCoords ? Number(driverLoc.lng) : 77.2090;
+  const parsedLat = Number(driverLoc?.lat !== undefined ? driverLoc.lat : driverLoc?.location?.lat);
+  const parsedLng = Number(driverLoc?.lng !== undefined ? driverLoc.lng : driverLoc?.location?.lng);
+  const hasValidCoords = Boolean(driverLoc && !isNaN(parsedLat) && !isNaN(parsedLng) && (parsedLat !== 0 || parsedLng !== 0));
+  const truckLat = hasValidCoords ? parsedLat : 28.6139;
+  const truckLng = hasValidCoords ? parsedLng : 77.2090;
   const truckSpeed = driverLoc?.speedKm || 28;
   const driverName = data?.assignedDriver?.name || emergencyItem?.assignedDriverName || 'Assigned Municipal Driver';
   const vehicleName = data?.assignedDriver?.van || emergencyItem?.assignedDriverVehicle || 'Waste Collection Truck';

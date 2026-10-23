@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { socket } from '../../services/socket';
 import DriverLayout from './layout/DriverLayout';
@@ -198,11 +198,13 @@ export default function DriverApp() {
     fetchDashboard();
   }, []);
 
+  const lastHttpGpsRef = useRef(0);
+
   useEffect(() => {
     // Broadcast GPS location only when authenticated driver data is loaded from server
     const broadcastLocation = (lat, lng) => {
-      const driver = data?.driver || data?.driverInfo;
-      if (!driver || !driver._id) return;
+      const driver = data?.driver || data?.driverInfo || getLocalDriver();
+      if (!driver || (!driver._id && !driver.customId)) return;
 
       const sector = data?.activeSector || driver.activeSector || '';
       const payload = {
@@ -218,8 +220,25 @@ export default function DriverApp() {
         heading: 'In-Transit'
       };
 
-      // Broadcast to socket clients (Resident & Admin)
+      // 1. Broadcast to socket clients (Resident & Admin)
       socket.emit('update-location', payload);
+
+      // 2. Persist to MongoDB via HTTP POST every 5s (ensures Resident & Admin receive GPS on serverless)
+      if (Date.now() - lastHttpGpsRef.current > 5000) {
+        lastHttpGpsRef.current = Date.now();
+        fetch('/api/driver/location-update', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            driverId: driver.customId || driver._id,
+            lat,
+            lng,
+            speedKm: payload.speedKm,
+            heading: payload.heading,
+            sector: payload.sector
+          })
+        }).catch(() => null);
+      }
 
       // Keep local state in sync so driver UI reflects it
       setData(prev => prev ? ({
@@ -235,9 +254,9 @@ export default function DriverApp() {
     };
 
     let watchId = null;
-    const currentDriver = data?.driver || data?.driverInfo;
+    const currentDriver = data?.driver || data?.driverInfo || getLocalDriver();
 
-    if (isOnDuty && currentDriver && currentDriver._id) {
+    if (isOnDuty && currentDriver && (currentDriver._id || currentDriver.customId)) {
       // Broadcast immediate initial location
       const initLat = currentDriver?.liveLocation?.lat && currentDriver.liveLocation.lat !== 0 
         ? currentDriver.liveLocation.lat 

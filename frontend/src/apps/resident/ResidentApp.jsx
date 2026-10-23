@@ -194,11 +194,80 @@ export default function ResidentApp() {
     setProximityAlert(prev => prev ? { ...prev, sirenSilenced: true, type: null } : null);
   };
 
+  const checkDriverProximity = (locData, residentHouseLoc) => {
+    const lat = Number(locData?.lat !== undefined ? locData.lat : locData?.location?.lat);
+    const lng = Number(locData?.lng !== undefined ? locData.lng : locData?.location?.lng);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const houseLat = Number(residentHouseLoc?.lat);
+    const houseLng = Number(residentHouseLoc?.lng);
+    if (!houseLat || !houseLng || isNaN(houseLat) || isNaN(houseLng) || houseLat === 0 || houseLng === 0) return;
+
+    const distMeters = calculateDistanceMeters(lat, lng, houseLat, houseLng);
+
+    if (distMeters <= 80) {
+      if (!doorstepTriggeredRef.current) {
+        doorstepTriggeredRef.current = true;
+        nearbyTriggeredRef.current = true;
+        const stopFn = soundManager.playDoorstepSiren(12);
+        activeSirenStopRef.current = stopFn;
+        showToast(`🚨 DOORSTEP ARRIVAL: Collection truck is at your doorstep (~${distMeters}m)! Pickup underway.`, 'warning');
+        addNotification({
+          type: 'doorstep',
+          title: '🚨 Truck at Your Doorstep',
+          message: `Waste collection truck (${locData?.vehicle || 'Truck'}) has reached your doorstep (~${distMeters}m). Driver: ${locData?.driverName || 'Municipal Driver'}. Curbside collection underway.`
+        });
+      }
+      setProximityAlert({
+        type: 'doorstep',
+        distanceMeters: distMeters,
+        driverName: locData?.driverName || 'Municipal Driver',
+        vehicle: locData?.vehicle || 'Collection Truck'
+      });
+    } else if (distMeters <= 400) {
+      if (!nearbyTriggeredRef.current) {
+        nearbyTriggeredRef.current = true;
+        soundManager.playProximityChime();
+        showToast(`🔔 Collection Truck Nearby! Driver ${locData?.driverName || 'Municipal Driver'} is approximately ${distMeters}m away. Please keep bins ready curbside.`, 'info');
+        addNotification({
+          type: 'nearby',
+          title: '🔔 Collection Truck Nearby',
+          message: `Driver ${locData?.driverName || 'Municipal Driver'} (${locData?.vehicle || 'Truck'}) is approaching (~${distMeters}m away). Please keep waste bins curbside.`
+        });
+      }
+      setProximityAlert({
+        type: 'nearby',
+        distanceMeters: distMeters,
+        driverName: locData?.driverName || 'Municipal Driver',
+        vehicle: locData?.vehicle || 'Collection Truck'
+      });
+    } else if (distMeters > 550) {
+      if (activeSirenStopRef.current) {
+        activeSirenStopRef.current();
+        activeSirenStopRef.current = null;
+      }
+      doorstepTriggeredRef.current = false;
+      nearbyTriggeredRef.current = false;
+      setProximityAlert(null);
+    }
+  };
+
   const loadDashboard = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       const json = await fetchResidentDashboard();
       setData(json);
+
+      // Check proximity alert & doorstep siren if driver is on duty
+      if (json?.assignedDriver?.isOnDuty && json?.assignedDriver?.liveLocation) {
+        const houseLoc = json.resident?.houseLocation || json.houseLocation;
+        checkDriverProximity({
+          lat: json.assignedDriver.liveLocation.lat,
+          lng: json.assignedDriver.liveLocation.lng,
+          driverName: json.assignedDriver.name,
+          vehicle: json.assignedDriver.van || json.assignedDriver.vehicle
+        }, houseLoc);
+      }
 
       // Seed initial notification history if resident has no stored notifications
       setNotifications(prev => {
@@ -295,61 +364,7 @@ export default function ResidentApp() {
         if (isNaN(lat) || isNaN(lng)) return prev;
 
         // Proximity calculation for nearby alert and doorstep siren
-        const houseLat = Number(prev.resident?.houseLocation?.lat || prev.houseLocation?.lat);
-        const houseLng = Number(prev.resident?.houseLocation?.lng || prev.houseLocation?.lng);
-
-        if (houseLat && houseLng && !isNaN(houseLat) && !isNaN(houseLng) && houseLat !== 0 && houseLng !== 0) {
-          const distMeters = calculateDistanceMeters(lat, lng, houseLat, houseLng);
-
-          if (distMeters <= 80) {
-            // Doorstep Arrival (<= 80m): trigger siren and high priority alert
-            if (!doorstepTriggeredRef.current) {
-              doorstepTriggeredRef.current = true;
-              nearbyTriggeredRef.current = true;
-              const stopFn = soundManager.playDoorstepSiren(12);
-              activeSirenStopRef.current = stopFn;
-              showToast(`🚨 DOORSTEP ARRIVAL: Collection truck is at your doorstep (~${distMeters}m)! Pickup underway.`, 'warning');
-              addNotification({
-                type: 'doorstep',
-                title: '🚨 Truck at Your Doorstep',
-                message: `Waste collection truck (${locData.vehicle || 'Truck'}) has reached your doorstep (~${distMeters}m). Driver: ${locData.driverName || 'Municipal Driver'}. Curbside collection underway.`
-              });
-            }
-            setProximityAlert({
-              type: 'doorstep',
-              distanceMeters: distMeters,
-              driverName: locData.driverName || 'Municipal Driver',
-              vehicle: locData.vehicle || 'Collection Truck'
-            });
-          } else if (distMeters <= 400) {
-            // Nearby Approach (<= 400m): trigger chime and nearby notification
-            if (!nearbyTriggeredRef.current) {
-              nearbyTriggeredRef.current = true;
-              soundManager.playProximityChime();
-              showToast(`🔔 Collection Truck Nearby! Driver ${locData.driverName || 'Municipal Driver'} is approximately ${distMeters}m away. Please keep bins ready curbside.`, 'info');
-              addNotification({
-                type: 'nearby',
-                title: '🔔 Collection Truck Nearby',
-                message: `Driver ${locData.driverName || 'Municipal Driver'} (${locData.vehicle || 'Truck'}) is approaching (~${distMeters}m away). Please keep waste bins curbside.`
-              });
-            }
-            setProximityAlert({
-              type: 'nearby',
-              distanceMeters: distMeters,
-              driverName: locData.driverName || 'Municipal Driver',
-              vehicle: locData.vehicle || 'Collection Truck'
-            });
-          } else if (distMeters > 550) {
-            // Truck has moved beyond proximity range
-            if (activeSirenStopRef.current) {
-              activeSirenStopRef.current();
-              activeSirenStopRef.current = null;
-            }
-            doorstepTriggeredRef.current = false;
-            nearbyTriggeredRef.current = false;
-            setProximityAlert(null);
-          }
-        }
+        checkDriverProximity(locData, prev.resident?.houseLocation || prev.houseLocation);
 
         const updatedLocation = {
           lat,
@@ -696,7 +711,13 @@ export default function ResidentApp() {
     socket.on('order-delivered', handleOrderDelivered);
     socket.on('order-status-updated', loadDashboard);
 
+    // Silent background polling every 6s for live location and doorstep proximity on serverless deployments
+    const pollInterval = setInterval(() => {
+      loadDashboard(true);
+    }, 6000);
+
     return () => {
+      clearInterval(pollInterval);
       socket.off('driver-location-update');
       socket.off('driver-duty-changed');
       socket.off('driver-area-assigned');
