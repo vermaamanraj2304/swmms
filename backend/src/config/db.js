@@ -27,7 +27,8 @@ const connectDB = async () => {
 
   if (!cachedPromise) {
     cachedPromise = mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
     }).then((conn) => {
       console.log(`✅ MongoDB Connected to: ${conn.connection.name || 'default'} @ ${conn.connection.host}`);
       return conn;

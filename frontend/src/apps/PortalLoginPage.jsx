@@ -12,8 +12,7 @@ import {
   Mail,
   MapPin,
   Phone,
-  UserPlus,
-  Sparkles
+  UserPlus
 } from 'lucide-react';
 
 export default function PortalLoginPage({ portalType = 'resident' }) {
@@ -57,8 +56,7 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
       color: 'emerald',
       bgGrad: 'from-emerald-950 via-slate-900 to-slate-950',
       icon: Home,
-      targetPath: '/resident',
-      demoCreds: { id: 'RES-101', email: 'resident@cleancty.gov', pass: 'Resident@123' }
+      targetPath: '/resident'
     },
     driver: {
       title: 'Fleet Driver Terminal',
@@ -68,8 +66,7 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
       color: 'blue',
       bgGrad: 'from-blue-950 via-slate-900 to-slate-950',
       icon: Truck,
-      targetPath: '/driver',
-      demoCreds: { id: 'DRV-902', email: 'driver@smarttrash.gov', pass: 'Driver@123' }
+      targetPath: '/driver'
     },
     admin: {
       title: municipalName,
@@ -79,8 +76,7 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
       color: 'slate',
       bgGrad: 'from-slate-950 via-slate-900 to-black',
       icon: Building2,
-      targetPath: '/admin',
-      demoCreds: { id: 'ADM-001', email: 'gn@gmail.com', pass: '@Qwert123' }
+      targetPath: '/admin'
     }
   }[portalType === 'superadmin' ? 'admin' : portalType] || {};
 
@@ -169,29 +165,6 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
         navigate(getTargetDestination(), { replace: true });
       } else {
         setError(data.message || 'Invalid Login ID or Password');
-      }
-    } catch (err) {
-      setError('Connection error with municipal server. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (overrideRole) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/demo-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: overrideRole || portalConfig.role })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        savePortalAuth(data, portalType);
-        navigate(getTargetDestination(), { replace: true });
-      } else {
-        setError(data.message || 'Demo login failed');
       }
     } catch (err) {
       setError('Connection error with municipal server. Please try again.');
@@ -348,23 +321,6 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
               <span>{loading ? 'Authenticating with Municipal DB...' : (portalType === 'admin' ? `Sign In to ${portalConfig.title}` : `Sign In to ${portalConfig.title.split(' ')[0]} Portal`)}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-
-            <div className="pt-3 border-t border-slate-800 space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin()}
-                disabled={loading}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl text-xs transition border border-slate-700 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>⚡ Instant 1-Click Demo Login</span>
-              </button>
-              {portalConfig.demoCreds && (
-                <div className="text-center text-[10px] text-slate-400 font-mono">
-                  Demo: <button type="button" onClick={() => { setIdentifier(portalConfig.demoCreds.email); setPassword(portalConfig.demoCreds.pass); }} className="text-emerald-400 hover:underline font-bold cursor-pointer">{portalConfig.demoCreds.email}</button> / <span className="text-slate-300">{portalConfig.demoCreds.pass}</span>
-                </div>
-              )}
-            </div>
           </form>
         )}
 

@@ -41,10 +41,15 @@ app.use(express.json());
 app.set('io', io);
 
 // Ensure MongoDB is connected on incoming requests (vital for serverless cold starts)
+let isSuperadminEnsured = false;
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/api') && req.path !== '/api/health') {
     try {
       await connectDB();
+      if (!isSuperadminEnsured) {
+        isSuperadminEnsured = true;
+        ensureSuperadminAccount().catch(e => console.warn('Superadmin init notice:', e.message));
+      }
     } catch (err) {
       console.error('Database connection middleware warning:', err.message);
       return res.status(503).json({
@@ -55,6 +60,17 @@ app.use(async (req, res, next) => {
   }
   next();
 });
+
+// Provide immediate explicit response if socket.io is hit on Vercel serverless
+if (process.env.VERCEL) {
+  app.all('/socket.io*', (req, res) => {
+    res.status(501).json({
+      success: false,
+      error: 'SOCKET_IO_UNSUPPORTED_ON_SERVERLESS',
+      message: 'Vercel Serverless Functions do not support persistent WebSockets/Socket.io. Host the backend on Render, Railway, or a persistent Node.js server and set VITE_SOCKET_URL in your frontend.'
+    });
+  });
+}
 
 // Root Status Endpoint (or serve frontend if dist exists)
 app.get('/', (req, res, next) => {
@@ -123,17 +139,6 @@ if (!process.env.VERCEL) {
     server.listen(PORT, () => {
       console.log(`🚀 SWM&MS Production Server running on http://localhost:${PORT}`);
     });
-  });
-} else {
-  // In Vercel serverless, initiate background connection
-  connectDB().then(async () => {
-    try {
-      await ensureSuperadminAccount();
-    } catch (e) {
-      console.warn('Superadmin initialization warning on Vercel:', e.message);
-    }
-  }).catch((e) => {
-    console.warn('Vercel DB connection init error:', e.message);
   });
 }
 

@@ -2589,9 +2589,35 @@ export const getAdminRewardsData = async (req, res) => {
       gifts = await RewardGift.find().sort({ createdAt: -1 });
     }
 
-    const redemptions = await RewardRedemption.find().sort({ createdAt: -1 });
+    const rawRedemptions = await RewardRedemption.find().sort({ createdAt: -1 });
 
-    const allRedemptions = await RewardRedemption.find().sort({ createdAt: -1 });
+    // Ensure order deliveryStatus is only 'REFUNDED' if an actual approved refund complaint exists
+    const allRedemptions = await Promise.all(rawRedemptions.map(async (order) => {
+      if ((order.deliveryStatus === 'REFUNDED' || order.status === 'REFUNDED' || order.isRefunded) && !order.refundTransactionId) {
+        const refundComplaint = await Complaint.findOne({
+          $or: [
+            { orderId: order._id },
+            { orderCustomId: order.customId }
+          ],
+          resolutionType: 'REFUND',
+          status: 'Resolved'
+        });
+
+        if (!refundComplaint) {
+          // No resolved refund complaint found: Revert to DELIVERED / actual fulfillment state
+          order.isRefunded = false;
+          order.refundedPoints = 0;
+          order.refundedAmountInr = 0;
+          order.deliveryStatus = order.deliveredAt ? 'DELIVERED' : (order.pickedUpAt ? 'OUT FOR DELIVERY' : (order.packedAt ? 'PACKED' : 'ORDER PLACED'));
+          order.status = order.deliveredAt ? 'COMPLETED' : 'ACTIVE';
+          if (order.complaintStatus?.toLowerCase().includes('refund')) {
+            order.complaintStatus = order.hasComplaint ? 'Under Review' : '';
+          }
+          await order.save().catch(() => null);
+        }
+      }
+      return order;
+    }));
     const drivers = await Driver.find({}, 'customId name phone assignedVehicle activeSector isOnDuty status').sort({ name: 1 });
 
     const totalPointsRedeemed = allRedemptions.reduce((sum, r) => sum + (Number(r.pointsRedeemed) || 0), 0);

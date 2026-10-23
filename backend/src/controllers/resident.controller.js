@@ -1068,45 +1068,53 @@ export const getResidentOrders = async (req, res) => {
 
     const orders = await RewardRedemption.find({ residentId: resident._id }).sort({ createdAt: -1 });
 
-    // Auto-heal & sync any order that had its complaint resolved as REFUND
+    // Sync order refund status ONLY if an official Complaint was resolved as REFUND by admin
     const updatedOrders = await Promise.all(orders.map(async (order) => {
       const orderObj = order.toObject();
-      if (!orderObj.isRefunded && (
-        orderObj.deliveryStatus === 'REFUNDED' || 
-        orderObj.status === 'REFUNDED' || 
-        orderObj.complaintStatus?.includes('Refund') || 
-        orderObj.hasComplaint || 
-        orderObj.notes?.includes('Refunded')
-      )) {
-        const complaint = await Complaint.findOne({
-          $or: [
-            { orderId: order._id },
-            { orderCustomId: order.customId }
-          ],
-          resolutionType: 'REFUND'
-        });
-        
-        let refPoints = complaint?.refundPoints;
-        if (!refPoints && orderObj.notes) {
-          const match = orderObj.notes.match(/Refunded\s+(\d+)\s*PTS/i);
-          if (match) refPoints = parseInt(match[1]);
-        }
-        if (!refPoints) {
-          refPoints = order.pointsRedeemed || 0;
-        }
 
+      // Look for an actual, approved Complaint with resolutionType === 'REFUND' and status === 'Resolved'
+      const refundComplaint = await Complaint.findOne({
+        $or: [
+          { orderId: order._id },
+          { orderCustomId: order.customId }
+        ],
+        resolutionType: 'REFUND',
+        status: 'Resolved'
+      });
+
+      if (refundComplaint) {
+        // Officially approved refund by municipal admin
+        const refPoints = refundComplaint.refundPoints || order.pointsRedeemed || 0;
         const refInr = Number((refPoints * 0.5).toFixed(2));
-        order.isRefunded = true;
-        order.refundedPoints = refPoints;
-        order.refundedAmountInr = refInr;
-        order.refundedAt = complaint?.resolvedAt || complaint?.updatedAt || order.updatedAt || new Date();
-        order.refundNotes = complaint?.resolutionNotes || order.notes || `Refunded ${refPoints} PTS to resident account.`;
-        order.complaintStatus = `Refunded (+${refPoints} PTS / ₹${refInr})`;
-        order.deliveryStatus = 'REFUNDED';
-        order.status = 'REFUNDED';
+        if (!order.isRefunded || order.deliveryStatus !== 'REFUNDED') {
+          order.isRefunded = true;
+          order.refundedPoints = refPoints;
+          order.refundedAmountInr = refInr;
+          order.refundedAt = refundComplaint.resolvedAt || refundComplaint.updatedAt || new Date();
+          order.refundNotes = refundComplaint.resolutionNotes || `Refunded ${refPoints} PTS to resident account.`;
+          order.complaintStatus = `Refunded (+${refPoints} PTS / ₹${refInr})`;
+          order.deliveryStatus = 'REFUNDED';
+          order.status = 'REFUNDED';
+          await order.save().catch(() => null);
+        }
+        return order.toObject();
+      }
+
+      // If no approved refund complaint exists, this order must NOT be marked REFUNDED!
+      // If it was previously mistakenly set to REFUNDED, restore its rightful delivery status
+      if (orderObj.deliveryStatus === 'REFUNDED' || orderObj.status === 'REFUNDED' || orderObj.isRefunded) {
+        order.isRefunded = false;
+        order.refundedPoints = 0;
+        order.refundedAmountInr = 0;
+        order.deliveryStatus = order.deliveredAt ? 'DELIVERED' : (order.pickedUpAt ? 'OUT FOR DELIVERY' : (order.packedAt ? 'PACKED' : 'ORDER PLACED'));
+        order.status = order.deliveredAt ? 'COMPLETED' : 'ACTIVE';
+        if (order.complaintStatus?.toLowerCase().includes('refund')) {
+          order.complaintStatus = order.hasComplaint ? 'Under Review' : '';
+        }
         await order.save().catch(() => null);
         return order.toObject();
       }
+
       return orderObj;
     }));
 

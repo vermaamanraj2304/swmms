@@ -921,6 +921,16 @@ export default function AdminRewardsManagementPage({ activeSubTab = 'catalog', o
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-[#0F172A]">{order.rewardTitle}</div>
                         <div className="text-[11px] text-slate-400">{order.rewardSize || order.size || 'Standard'}</div>
+                        {order.hasComplaint && !order.isRefunded && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 mt-1">
+                            <span>⚠️ Complaint: {order.complaintStatus || 'Under Review'}</span>
+                          </div>
+                        )}
+                        {order.isRefunded && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200 mt-1">
+                            <span>💰 Refund Approved: +{order.refundedPoints || order.pointsRedeemed} PTS</span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
