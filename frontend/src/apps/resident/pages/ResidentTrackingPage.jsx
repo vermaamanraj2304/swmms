@@ -10,9 +10,11 @@ import {
   CheckCircle2, 
   Clock, 
   Phone, 
-  AlertTriangle 
+  AlertTriangle,
+  Volume2
 } from 'lucide-react';
 import ResidentLiveTrackingMap from '../components/ResidentLiveTrackingMap';
+import { soundManager } from '../../../utils/audioAlerts';
 
 export default function ResidentTrackingPage({ data, fetchDashboard, showToast, setActiveTab }) {
   const isEmergencyActive = Boolean(
@@ -224,7 +226,17 @@ export default function ResidentTrackingPage({ data, fetchDashboard, showToast, 
             <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 space-y-1">
               <span className="text-[10px] font-bold uppercase text-slate-400 block">DOORSTEP SIREN ALERT</span>
               <p className="font-bold text-amber-300 text-sm">Automated Audio Alarm</p>
-              <span className="text-slate-400">Triggers siren on device when truck reaches &lt;80m</span>
+              <span className="text-slate-400 text-xs block">Triggers siren on device when truck reaches &lt;80m</span>
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playDoorstepSiren(4);
+                }}
+                className="mt-2 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold border border-amber-500/30 flex items-center gap-1.5 cursor-pointer transition"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>🔊 Test Siren Sound</span>
+              </button>
             </div>
           </div>
         )}
