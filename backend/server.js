@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 
 import connectDB from './src/config/db.js';
 import './src/models/User.js';
@@ -41,10 +42,16 @@ app.set('io', io);
 
 // Ensure MongoDB is connected on incoming requests (vital for serverless cold starts)
 app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-  } catch (err) {
-    console.error('Database connection middleware warning:', err.message);
+  if (req.path.startsWith('/api') && req.path !== '/api/health') {
+    try {
+      await connectDB();
+    } catch (err) {
+      console.error('Database connection middleware warning:', err.message);
+      return res.status(503).json({
+        success: false,
+        message: `Database Connection Failed: ${err.message}`
+      });
+    }
   }
   next();
 });
@@ -71,9 +78,14 @@ app.get('/', (req, res, next) => {
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  const states = ['Disconnected', 'Connected', 'Connecting', 'Disconnecting'];
   res.json({
-    status: 'OK',
-    message: 'SWM&MS Production API & WebSocket Server Active',
+    status: isConnected ? 'OK' : 'DEGRADED',
+    database: states[mongoose.connection.readyState] || 'Unknown',
+    message: isConnected 
+      ? 'SWM&MS Production API & WebSocket Server Active'
+      : 'API active, but MongoDB is not connected. Check MONGODB_URI.',
     timestamp: new Date().toISOString()
   });
 });
