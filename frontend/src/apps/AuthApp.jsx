@@ -180,22 +180,9 @@ export default function AuthApp({ initialMode = 'login' }) {
           {/* Top Toggle Pills */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex bg-slate-100 p-1 rounded-2xl text-xs font-bold">
-              <button
-                onClick={() => setIsLogin(true)}
-                className={`px-5 py-2 rounded-xl transition ${
-                  isLogin ? 'bg-white text-[#00B074] shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
+              <span className="px-5 py-2 rounded-xl bg-white text-[#00B074] shadow-xs">
                 Sign In
-              </button>
-              <button
-                onClick={() => setIsLogin(false)}
-                className={`px-5 py-2 rounded-xl transition ${
-                  !isLogin ? 'bg-white text-[#00B074] shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Create Account
-              </button>
+              </span>
             </div>
 
             <span className="text-xs text-slate-400 font-mono">CleanCity OS 2026</span>
@@ -345,19 +332,10 @@ export default function AuthApp({ initialMode = 'login' }) {
               disabled={loading}
               className="w-full bg-[#00B074] hover:bg-[#009663] text-white py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
             >
-              <span>{loading ? 'Authenticating...' : isLogin ? 'Sign In to Portal' : 'Complete Registration'}</span>
+              <span>{loading ? 'Authenticating...' : 'Sign In to Portal'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Footer toggle note */}
-          <div className="text-center pt-2 text-xs text-slate-400">
-            {isLogin ? (
-              <span>Don't have an account yet? <button onClick={() => setIsLogin(false)} className="text-[#00B074] font-bold hover:underline">Register now</button></span>
-            ) : (
-              <span>Already registered? <button onClick={() => setIsLogin(true)} className="text-[#00B074] font-bold hover:underline">Sign In</button></span>
-            )}
-          </div>
 
         </div>
 

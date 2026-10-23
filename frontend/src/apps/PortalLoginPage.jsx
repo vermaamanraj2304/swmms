@@ -8,11 +8,7 @@ import {
   Lock, 
   User, 
   ArrowRight, 
-  AlertCircle,
-  Mail,
-  MapPin,
-  Phone,
-  UserPlus
+  AlertCircle
 } from 'lucide-react';
 
 export default function PortalLoginPage({ portalType = 'resident' }) {
@@ -82,16 +78,8 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
 
   const IconComponent = portalConfig.icon || Home;
 
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  
-  // Registration specific fields
-  const [name, setName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regAddress, setRegAddress] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -173,40 +161,6 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          email: regEmail,
-          password,
-          role: portalConfig.role,
-          phone: regPhone,
-          address: regAddress
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        savePortalAuth(data, portalType);
-        navigate(getTargetDestination(), { replace: true });
-      } else {
-        setError(data.message || 'Registration failed');
-      }
-    } catch (err) {
-      setError('Connection error with municipal server. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className={`min-h-screen bg-gradient-to-br ${portalConfig.bgGrad} flex items-center justify-center p-4 antialiased text-white`}>
       <div className="max-w-md w-full bg-slate-900/90 backdrop-blur-xl rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-5">
@@ -229,46 +183,24 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
         <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 text-[11px] font-bold">
           <button
             type="button"
-            onClick={() => { setMode('login'); navigate('/login?portal=resident'); }}
+            onClick={() => navigate('/login?portal=resident')}
             className={`py-2 rounded-xl transition ${portalType === 'resident' ? 'bg-[#00B074] text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
           >
             Resident
           </button>
           <button
             type="button"
-            onClick={() => { setMode('login'); navigate('/login?portal=driver'); }}
+            onClick={() => navigate('/login?portal=driver')}
             className={`py-2 rounded-xl transition ${portalType === 'driver' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
           >
             Driver
           </button>
           <button
             type="button"
-            onClick={() => { setMode('login'); navigate('/login?portal=admin'); }}
+            onClick={() => navigate('/login?portal=admin')}
             className={`py-2 rounded-xl transition ${portalType === 'admin' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
           >
             Admin HQ
-          </button>
-        </div>
-
-        {/* Login / Register Toggle Tabs */}
-        <div className="flex border-b border-slate-800 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => { setMode('login'); setError(null); }}
-            className={`flex-1 py-2 text-center border-b-2 transition ${
-              mode === 'login' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('register'); setError(null); }}
-            className={`flex-1 py-2 text-center border-b-2 transition ${
-              mode === 'register' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            Create Account
           </button>
         </div>
 
@@ -280,131 +212,47 @@ export default function PortalLoginPage({ portalType = 'resident' }) {
           </div>
         )}
 
-        {/* Mode: Sign In Form */}
-        {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4 text-xs">
-            <div>
-              <label className="block text-slate-300 font-bold mb-1.5">Email Address or Login ID</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter your email or ID"
-                  value={identifier}
-                  onChange={e => setIdentifier(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
+        {/* Sign In Form */}
+        <form onSubmit={handleLogin} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">Email Address or Login ID</label>
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                required
+                placeholder="Enter your email or ID"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
+              />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-slate-300 font-bold mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">Password</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="password"
+                required
+                placeholder="••••••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
+              />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-[#00B074] hover:bg-[#009663] text-white font-bold rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-2 mt-2 cursor-pointer"
-            >
-              <span>{loading ? 'Authenticating with Municipal DB...' : (portalType === 'admin' ? `Sign In to ${portalConfig.title}` : `Sign In to ${portalConfig.title.split(' ')[0]} Portal`)}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        )}
-
-        {/* Mode: Registration Form */}
-        {mode === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-3.5 text-xs">
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Full Name</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. John Doe"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Email Address</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. user@gmail.com"
-                  value={regEmail}
-                  onChange={e => setRegEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="password"
-                  required
-                  placeholder="Create secure password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Phone</label>
-                <input
-                  type="text"
-                  placeholder="+91 98765 43210"
-                  value={regPhone}
-                  onChange={e => setRegPhone(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Sector / Address</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sector Alpha"
-                  value={regAddress}
-                  onChange={e => setRegAddress(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 text-xs"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#00B074] hover:bg-[#009663] text-white font-bold rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-2 mt-2"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>{loading ? 'Creating in Database...' : (portalType === 'admin' ? `Register with ${municipalName}` : `Register as ${portalConfig.role}`)}</span>
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 bg-[#00B074] hover:bg-[#009663] text-white font-bold rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-2 mt-2 cursor-pointer"
+          >
+            <span>{loading ? 'Authenticating with Municipal DB...' : (portalType === 'admin' ? `Sign In to ${portalConfig.title}` : `Sign In to ${portalConfig.title.split(' ')[0]} Portal`)}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
 
       </div>
     </div>
