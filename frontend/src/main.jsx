@@ -4,18 +4,21 @@ import App from './App.jsx'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
 
+// Target backend API base URL from Vite environment variable (if set in production)
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 // Helper to obtain the appropriate auth token depending on target API resource and active view
 const getPortalSpecificToken = (resource) => {
   const url = typeof resource === 'string' ? resource : '';
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
 
-  if (url.startsWith('/api/driver')) {
+  if (url.includes('/api/driver')) {
     return localStorage.getItem('tmt_driver_token') || localStorage.getItem('tmt_token');
   }
-  if (url.startsWith('/api/resident')) {
+  if (url.includes('/api/resident')) {
     return localStorage.getItem('tmt_resident_token') || localStorage.getItem('tmt_token');
   }
-  if (url.startsWith('/api/admin')) {
+  if (url.includes('/api/admin')) {
     return localStorage.getItem('tmt_admin_token') || localStorage.getItem('tmt_token');
   }
 
@@ -36,12 +39,18 @@ const getPortalSpecificToken = (resource) => {
          localStorage.getItem('tmt_admin_token');
 };
 
-// Global fetch interceptor to inject JWT Authorization per portal and handle session expiry safely
+// Global fetch interceptor to inject JWT Authorization per portal, handle session expiry,
+// and route /api calls to the backend server when VITE_API_BASE_URL is provided
 const originalFetch = window.fetch;
 window.fetch = async (...args) => {
   let [resource, config] = args;
   config = config || {};
   config.headers = config.headers || {};
+
+  // Route relative /api requests to remote backend if VITE_API_BASE_URL is set
+  if (API_BASE_URL && typeof resource === 'string' && resource.startsWith('/api')) {
+    resource = `${API_BASE_URL}${resource}`;
+  }
 
   const token = getPortalSpecificToken(resource);
   if (token) {
@@ -63,17 +72,17 @@ window.fetch = async (...args) => {
   const response = await originalFetch(resource, config);
 
   // Handle true session expiry (401 Unauthorized) only when no valid token exists for the current portal
-  if (response.status === 401 && typeof resource === 'string' && resource.startsWith('/api/') && !resource.includes('/api/auth/login') && !resource.includes('/api/auth/demo-login')) {
+  if (response.status === 401 && typeof resource === 'string' && resource.includes('/api/') && !resource.includes('/api/auth/login') && !resource.includes('/api/auth/demo-login')) {
     const currentPath = window.location.pathname;
     const isDriverPage = currentPath.includes('/driver');
     const isResidentPage = currentPath.includes('/resident');
     const isAdminPage = currentPath.includes('/admin');
 
     // Only redirect if the 401 corresponds to the active page portal
-    const relevantApi = (isDriverPage && resource.startsWith('/api/driver')) ||
-                        (isResidentPage && resource.startsWith('/api/resident')) ||
-                        (isAdminPage && resource.startsWith('/api/admin')) ||
-                        resource.startsWith('/api/auth/me');
+    const relevantApi = (isDriverPage && resource.includes('/api/driver')) ||
+                        (isResidentPage && resource.includes('/api/resident')) ||
+                        (isAdminPage && resource.includes('/api/admin')) ||
+                        resource.includes('/api/auth/me');
 
     if (relevantApi) {
       const portal = isDriverPage ? 'driver' : (isAdminPage ? 'admin' : 'resident');
