@@ -284,6 +284,56 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
+ * Custom Complaint House Map Icon
+ * Displays a resident household marker with a prominent complaint alert indicator and pulse
+ */
+export function createComplaintHouseIcon({
+  label = 'Resident Home',
+  complaintCount = 1,
+  priority = 'High'
+} = {}) {
+  const isCritical = priority === 'Critical';
+  const primaryGradient = isCritical
+    ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
+    : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  const borderColor = isCritical ? '#fecaca' : '#fef3c7';
+  const pulseColor = isCritical ? 'rgba(239, 68, 68, 0.45)' : 'rgba(245, 158, 11, 0.45)';
+
+  const html = `
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; user-select: none;">
+      <!-- Pulsing alert ring -->
+      <div style="position: absolute; top: -6px; left: -6px; width: 52px; height: 52px; border-radius: 9999px; background-color: ${pulseColor}; pointer-events: none; animation: pulse 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+      
+      <!-- House Container with Alert Badge -->
+      <div style="position: relative; width: 42px; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #ffffff; background: ${primaryGradient}; border: 2.5px solid ${borderColor}; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); z-index: 2;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.5z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        
+        <!-- Complaint Badge Pill -->
+        <div style="position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9999px; background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+          ${complaintCount}
+        </div>
+      </div>
+
+      <!-- House & Complaint Tag -->
+      <div style="margin-top: 4px; white-space: nowrap; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 9999px; background: rgba(15, 23, 42, 0.95); color: #fef08a; border: 1px solid #b45309; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 3;">
+        ⚠️ ${label}
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-complaint-house-icon',
+    iconSize: [42, 64],
+    iconAnchor: [21, 32],
+    popupAnchor: [0, -28]
+  });
+}
+
+/**
  * Calculates Estimated Time of Arrival (ETA) in Minutes based on distance and municipal speed
  */
 export function calculateEtaMinutes(distanceKm, averageSpeedKmh = 22) {

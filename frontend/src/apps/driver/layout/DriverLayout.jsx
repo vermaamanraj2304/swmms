@@ -125,12 +125,12 @@ export default function DriverLayout({
               }`}
             >
               <Power className="w-3.5 h-3.5" />
-              <span className="sm:hidden">{isOnDuty ? 'Clock Out' : 'Start Shift'}</span>
-              <span className="hidden sm:inline">{isOnDuty ? 'End Duty Shift' : 'Start Duty Shift'}</span>
+              {/* <span className="sm:hidden">{isOnDuty ? 'Clock Out' : 'Start Shift'}</span>
+              <span className="hidden sm:inline">{isOnDuty ? 'End Duty Shift' : 'Start Duty Shift'}</span> */}
             </button>
 
             {/* Quick Dark / Light Theme Toggle */}
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 if (setTheme) {
@@ -142,7 +142,7 @@ export default function DriverLayout({
               aria-label="Toggle Theme"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </button>
+            </button> */}
 
             {/* Notification Bell */}
             <DriverNotificationBell

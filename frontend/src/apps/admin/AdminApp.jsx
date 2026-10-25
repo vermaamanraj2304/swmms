@@ -438,10 +438,20 @@ export default function AdminApp() {
         }
       };
 
-      setDriverLocations(prev => ({
-        ...prev,
-        [driverKey]: normalizedLoc
-      }));
+      // Purge from live locations if driver is off-duty
+      if (loc.isOnDuty === false) {
+        setDriverLocations(prev => {
+          if (!prev[driverKey]) return prev;
+          const copy = { ...prev };
+          delete copy[driverKey];
+          return copy;
+        });
+      } else {
+        setDriverLocations(prev => ({
+          ...prev,
+          [driverKey]: normalizedLoc
+        }));
+      }
 
       // Also keep data.driversList live telemetry in sync every second
       setData(prev => {
@@ -454,7 +464,7 @@ export default function AdminApp() {
           ) {
             return {
               ...d,
-              isOnDuty: loc.isOnDuty !== false,
+              isOnDuty: loc.isOnDuty !== undefined ? Boolean(loc.isOnDuty) : Boolean(d.isOnDuty),
               assignedVehicle: loc.vehicle || d.assignedVehicle,
               activeSector: loc.sector || d.activeSector,
               liveLocation: normalizedLoc.location
@@ -492,6 +502,27 @@ export default function AdminApp() {
           }
         };
       });
+
+      // Synchronize driversList immediately for real-time responsiveness
+      setData(prev => {
+        if (!prev || !prev.driversList) return prev;
+        const updatedList = prev.driversList.map(d => {
+          if (
+            (duty.driverId && d.customId === duty.driverId) ||
+            (duty.driverMongoId && String(d._id) === String(duty.driverMongoId)) ||
+            (duty.driverName && d.name === duty.driverName)
+          ) {
+            return {
+              ...d,
+              isOnDuty: isOn,
+              assignedVehicle: duty.vehicle || d.assignedVehicle,
+              activeSector: duty.sector || d.activeSector
+            };
+          }
+          return d;
+        });
+        return { ...prev, driversList: updatedList };
+      });
       fetchDashboard();
     });
 
@@ -504,6 +535,15 @@ export default function AdminApp() {
         title: isOrder ? '📦 New Order Grievance Ticket' : '📢 New Resident Grievance Filed',
         message: `Ticket #${ticketNo}: ${comp?.description || comp?.issueType || 'Resident grievance submitted.'} (${comp?.residentName || 'Resident'})`,
         actionTab: isOrder ? 'complaints_orders' : 'complaints'
+      });
+      setData(prev => {
+        if (!prev) return prev;
+        const existing = prev.complaints || [];
+        if (existing.some(c => (c._id && comp._id && String(c._id) === String(comp._id)) || (c.customId && comp.customId && c.customId === comp.customId))) return prev;
+        return {
+          ...prev,
+          complaints: [comp, ...existing]
+        };
       });
       fetchDashboard();
     });

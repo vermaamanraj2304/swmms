@@ -8,7 +8,7 @@ export default function AdminFleetMapPage({ data, driverLocations }) {
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">REAL-TIME TELEMETRY</span>
         <h2 className="text-2xl font-bold text-[#0F172A]">Live Fleet GPS Tracking Map</h2>
         <p className="text-xs text-slate-500">
-          Monitor municipal collection vehicles and residential properties in real-time.
+          Monitor on-duty collection vehicles and resident complaint locations in real-time.
         </p>
       </div>
 
