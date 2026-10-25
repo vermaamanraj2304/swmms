@@ -1,27 +1,41 @@
 import { Driver } from '../models/Driver.js';
 import { User } from '../models/User.js';
+import { EmergencyRequest } from '../models/EmergencyRequest.js';
+
+// In-memory driver cache to optimize high-frequency 1-second GPS stream
+const driverCache = new Map();
 
 export const handleSocketEvents = (io) => {
   io.on('connection', (socket) => {
     console.log(`⚡ WebSocket Client Connected: ${socket.id}`);
 
-    // Real-time live GPS broadcast from driver -> verify against database before broadcasting
+    // Real-time live GPS broadcast from driver -> persist to DB & broadcast to Resident and Admin immediately every second
     socket.on('update-location', async (data) => {
       const lat = Number(data.lat);
       const lng = Number(data.lng);
       if (isNaN(lat) || isNaN(lng)) return;
 
       try {
-        const query = data.driverMongoId 
-          ? { _id: data.driverMongoId }
-          : { $or: [{ customId: data.driverId }, { name: data.driverName }].filter(Boolean) };
+        const cacheKey = data.driverMongoId ? String(data.driverMongoId) : (data.driverId || data.driverName);
+        let existingDriver = cacheKey ? driverCache.get(cacheKey) : null;
 
-        if (!query || (query.$or && query.$or.length === 0)) return;
-
-        const existingDriver = await Driver.findOne(query);
         if (!existingDriver) {
-          // Driver deleted or not enrolled in DB - ignore ghost broadcast
-          return;
+          const query = data.driverMongoId 
+            ? { _id: data.driverMongoId }
+            : { $or: [{ customId: data.driverId }, { name: data.driverName }].filter(Boolean) };
+
+          if (!query || (query.$or && query.$or.length === 0)) return;
+
+          existingDriver = await Driver.findOne(query);
+          if (!existingDriver) {
+            // Driver deleted or not enrolled in DB - ignore ghost broadcast
+            return;
+          }
+          if (cacheKey) {
+            driverCache.set(cacheKey, existingDriver);
+            if (existingDriver._id) driverCache.set(String(existingDriver._id), existingDriver);
+            if (existingDriver.customId) driverCache.set(existingDriver.customId, existingDriver);
+          }
         }
 
         const payload = {
@@ -33,6 +47,8 @@ export const handleSocketEvents = (io) => {
           isOnDuty: data.isOnDuty !== undefined ? Boolean(data.isOnDuty) : true,
           lat,
           lng,
+          speedKm: data.speedKm || 20,
+          heading: data.heading || 'In-Transit',
           location: {
             lat,
             lng,
@@ -42,7 +58,10 @@ export const handleSocketEvents = (io) => {
           }
         };
 
-        // Persist verified driver's latest GPS coords in MongoDB
+        // 1. Immediately broadcast to ALL sockets (Resident, Admin, and Driver) without delay
+        io.emit('driver-location-update', payload);
+
+        // 2. Persist verified driver's latest GPS coordinates in MongoDB database every second
         await Driver.updateOne({ _id: existingDriver._id }, {
           $set: {
             isOnDuty: payload.isOnDuty,
@@ -50,7 +69,8 @@ export const handleSocketEvents = (io) => {
             liveLocation: payload.location
           }
         });
-        await User.updateOne({ _id: existingDriver._id }, {
+
+        User.updateOne({ _id: existingDriver._id }, {
           $set: {
             isOnDuty: payload.isOnDuty,
             isBroadcastingGPS: true,
@@ -58,8 +78,12 @@ export const handleSocketEvents = (io) => {
           }
         }).catch(() => null);
 
-        // Broadcast to ALL sockets (Resident, Admin, and Driver)
-        io.emit('driver-location-update', payload);
+        // Also update any active emergency response in progress for this driver
+        EmergencyRequest.updateMany(
+          { assignedDriverId: existingDriver._id, status: { $in: ['DISPATCHED', 'ON THE WAY'] } },
+          { $set: { driverLiveLocation: payload.location } }
+        ).catch(() => null);
+
       } catch (err) {
         console.warn('Socket update-location verification notice:', err.message);
       }
@@ -75,14 +99,35 @@ export const handleSocketEvents = (io) => {
         const existingDriver = await Driver.findOne(query);
         if (!existingDriver) return;
 
+        // Invalidate cached status
+        if (data.driverMongoId) driverCache.delete(String(data.driverMongoId));
+        if (existingDriver.customId) driverCache.delete(existingDriver.customId);
+        if (existingDriver._id) driverCache.delete(String(existingDriver._id));
+
+        const isOnDuty = Boolean(data.isOnDuty);
+
+        // Update database with duty status
+        await Driver.updateOne({ _id: existingDriver._id }, {
+          $set: {
+            isOnDuty,
+            isBroadcastingGPS: isOnDuty
+          }
+        });
+        await User.updateOne({ _id: existingDriver._id }, {
+          $set: {
+            isOnDuty,
+            isBroadcastingGPS: isOnDuty
+          }
+        }).catch(() => null);
+
         io.emit('driver-duty-changed', {
           driverId: existingDriver.customId,
           driverMongoId: existingDriver._id,
           driverName: existingDriver.name,
           vehicle: existingDriver.assignedVehicle,
           sector: existingDriver.activeSector,
-          isOnDuty: Boolean(data.isOnDuty),
-          liveLocation: data.isOnDuty ? (data.liveLocation || existingDriver.liveLocation) : null,
+          isOnDuty,
+          liveLocation: isOnDuty ? (data.liveLocation || existingDriver.liveLocation) : null,
           registeredLocation: existingDriver.registeredLocation || null
         });
       } catch (err) {

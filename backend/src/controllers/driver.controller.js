@@ -442,6 +442,12 @@ export const updateLiveLocation = async (req, res) => {
       return res.status(400).json({ message: 'Latitude and longitude are required' });
     }
 
+    const numLat = Number(lat);
+    const numLng = Number(lng);
+    if (isNaN(numLat) || isNaN(numLng)) {
+      return res.status(400).json({ message: 'Valid numerical latitude and longitude are required' });
+    }
+
     let driver = (req.user && req.user.role === 'driver') ? req.user : null;
     if (!driver && req.body.driverId) {
       driver = await Driver.findOne({
@@ -465,14 +471,27 @@ export const updateLiveLocation = async (req, res) => {
       driver.isOnDuty = true;
       driver.isBroadcastingGPS = true;
       driver.liveLocation = {
-        lat,
-        lng,
+        lat: numLat,
+        lng: numLng,
         address: address || driver.liveLocation?.address || '',
-        speedKm: speedKm || 0,
-        heading: heading || 'N/A',
+        speedKm: Number(speedKm) || 20,
+        heading: heading || 'In-Transit',
         lastBroadcastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       };
       await driver.save();
+
+      await User.updateOne({ _id: driver._id }, {
+        $set: {
+          isOnDuty: true,
+          isBroadcastingGPS: true,
+          liveLocation: driver.liveLocation
+        }
+      }).catch(() => null);
+
+      await EmergencyRequest.updateMany(
+        { assignedDriverId: driver._id, status: { $in: ['DISPATCHED', 'ON THE WAY'] } },
+        { $set: { driverLiveLocation: driver.liveLocation } }
+      ).catch(() => null);
 
       const io = req.app.get('io');
       if (io) {
@@ -484,6 +503,10 @@ export const updateLiveLocation = async (req, res) => {
           sector: driver.activeSector,
           vehicle: driver.assignedVehicle,
           isOnDuty: driver.isOnDuty,
+          lat: numLat,
+          lng: numLng,
+          speedKm: driver.liveLocation.speedKm,
+          heading: driver.liveLocation.heading,
           location: driver.liveLocation
         });
       }

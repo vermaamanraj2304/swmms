@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Truck, Home, Navigation, Gauge, Clock, ExternalLink, RefreshCw, Radio, Crosshair, ChevronUp, ChevronDown } from 'lucide-react';
 import { 
@@ -144,12 +144,6 @@ export default function ResidentLiveTrackingMap({
     return customEta || calculateEtaMinutes(distanceKm, driverLocation?.speedKm || 22);
   }, [isOnDuty, distanceKm, customEta, driverLocation?.speedKm]);
 
-  // Route path coordinates between Vehicle and Resident (only rendered when driver is on duty)
-  const routePolyline = useMemo(() => {
-    if (!isOnDuty || !residentCoords || !hasValidDriverCoords) return null;
-    return [vehicleCoords, residentCoords];
-  }, [isOnDuty, vehicleCoords, residentCoords, hasValidDriverCoords]);
-
   // Custom Markers
   const vehicleIcon = useMemo(() => {
     return createVehicleIcon({
@@ -228,7 +222,6 @@ export default function ResidentLiveTrackingMap({
                     </span>
                   </div>
                   <div>Station / Sector: <span className="font-bold text-slate-700">{activeSector}</span></div>
-                  <div>Speed: <span className="font-bold text-slate-700">{driverLocation?.speedKm || 20} km/h</span></div>
                   <div>Coordinates: {vehicleCoords[0].toFixed(5)}, {vehicleCoords[1].toFixed(5)}</div>
                 </div>
               </div>
@@ -255,19 +248,6 @@ export default function ResidentLiveTrackingMap({
               </div>
             </Popup>
           </Marker>
-        )}
-
-        {/* 3. Direct In-Transit Route Line connecting Vehicle to Resident - Strictly ONLY when ON DUTY */}
-        {isOnDuty && routePolyline && (
-          <Polyline
-            positions={routePolyline}
-            pathOptions={{
-              color: isEmergency ? '#E11D48' : '#00B074',
-              weight: 4,
-              opacity: 0.85,
-              dashArray: '10, 8'
-            }}
-          />
         )}
 
         {/* Dynamic Bounds Manager and Tile Invalidator */}
@@ -331,7 +311,7 @@ export default function ResidentLiveTrackingMap({
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
             <span className={`flex items-center gap-1.5 ${isOnDuty ? 'text-emerald-400' : 'text-amber-400'}`}>
               <span className={`w-2.5 h-2.5 rounded-full ${isOnDuty ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span className="truncate">{isOnDuty ? 'LIVE FLEET STREAM' : 'DRIVER OFF DUTY • TELEMETRY PAUSED'}</span>
+              <span className="truncate">{isOnDuty ? 'LIVE FLEET STREAM' : 'TELEMETRY PAUSED'}</span>
             </span>
 
             <div className="flex items-center gap-1.5 shrink-0">
@@ -398,12 +378,7 @@ export default function ResidentLiveTrackingMap({
                   Distance: <strong className="text-white">{distanceKm ? `${distanceKm} km` : 'In Transit'}</strong>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <Gauge className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">
-                  Speed: <strong className="text-white">{`${driverLocation?.speedKm || 22} km/h`}</strong>
-                </span>
-              </div>
+              
             </div>
           ) : (
             <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">

@@ -434,7 +434,7 @@ export default function AdminApp() {
           lng,
           speedKm: loc.speedKm || loc.location?.speedKm || 20,
           heading: loc.heading || loc.location?.heading || 'In-Transit',
-          lastBroadcastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          lastBroadcastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         }
       };
 
@@ -442,6 +442,28 @@ export default function AdminApp() {
         ...prev,
         [driverKey]: normalizedLoc
       }));
+
+      // Also keep data.driversList live telemetry in sync every second
+      setData(prev => {
+        if (!prev || !prev.driversList) return prev;
+        const updatedList = prev.driversList.map(d => {
+          if (
+            (loc.driverId && d.customId === loc.driverId) ||
+            (loc.driverMongoId && String(d._id) === String(loc.driverMongoId)) ||
+            (loc.driverName && d.name === loc.driverName)
+          ) {
+            return {
+              ...d,
+              isOnDuty: loc.isOnDuty !== false,
+              assignedVehicle: loc.vehicle || d.assignedVehicle,
+              activeSector: loc.sector || d.activeSector,
+              liveLocation: normalizedLoc.location
+            };
+          }
+          return d;
+        });
+        return { ...prev, driversList: updatedList };
+      });
     });
 
     socket.on('driver-duty-changed', (duty) => {
@@ -581,10 +603,10 @@ export default function AdminApp() {
     socket.on('emergency-updated', fetchDashboard);
     socket.on('emergency-deleted', fetchDashboard);
 
-    // Silent background polling every 6s as resilient fallback for serverless deployments
+    // Silent background polling every 5s as resilient fallback for serverless deployments
     const pollInterval = setInterval(() => {
       fetchDashboard(true);
-    }, 6000);
+    }, 5000);
 
     return () => {
       clearInterval(pollInterval);

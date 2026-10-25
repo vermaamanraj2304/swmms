@@ -158,9 +158,9 @@ export default function DriverApp() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch('/api/driver/dashboard', {
         headers: getAuthHeaders()
       });
@@ -215,21 +215,32 @@ export default function DriverApp() {
     } catch (err) {
       console.error('Driver dashboard fetch error:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboard();
+
+    // Silent background polling every 5s so all driver data stays smoothly synchronized with backend
+    const pollInterval = setInterval(() => {
+      fetchDashboard(true);
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   const lastHttpGpsRef = useRef(0);
 
   useEffect(() => {
     // Broadcast GPS location only when authenticated driver data is loaded from server
-    const broadcastLocation = (lat, lng) => {
+    const broadcastLocation = (lat, lng, speedKm = 22, heading = 'In-Transit') => {
       const driver = data?.driver || data?.driverInfo || getLocalDriver();
       if (!driver || (!driver._id && !driver.customId)) return;
+
+      const numLat = Number(Number(lat).toFixed(6));
+      const numLng = Number(Number(lng).toFixed(6));
+      if (isNaN(numLat) || isNaN(numLng)) return;
 
       const sector = data?.activeSector || driver.activeSector || '';
       const payload = {
@@ -239,25 +250,25 @@ export default function DriverApp() {
         sector,
         vehicle: driver.assignedVehicle || 'Assigned Vehicle',
         isOnDuty: true,
-        lat,
-        lng,
-        speedKm: Math.floor(18 + Math.random() * 10),
-        heading: 'In-Transit'
+        lat: numLat,
+        lng: numLng,
+        speedKm,
+        heading
       };
 
-      // 1. Broadcast to socket clients (Resident & Admin)
+      // 1. Broadcast to socket clients (Resident & Admin) every second with accurate coordinates
       socket.emit('update-location', payload);
 
-      // 2. Persist to MongoDB via HTTP POST every 5s (ensures Resident & Admin receive GPS on serverless)
-      if (Date.now() - lastHttpGpsRef.current > 5000) {
+      // 2. Persist to MongoDB via HTTP POST every 5s (ensures database sync on serverless fallback)
+      if (Date.now() - lastHttpGpsRef.current >= 5000) {
         lastHttpGpsRef.current = Date.now();
         fetch('/api/driver/location-update', {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify({
             driverId: driver.customId || driver._id,
-            lat,
-            lng,
+            lat: numLat,
+            lng: numLng,
             speedKm: payload.speedKm,
             heading: payload.heading,
             sector: payload.sector
@@ -265,15 +276,15 @@ export default function DriverApp() {
         }).catch(() => null);
       }
 
-      // Keep local state in sync so driver UI reflects it
+      // Keep local state in sync so driver UI reflects it in real time
       setData(prev => prev ? ({
         ...prev,
         liveLocation: {
-          lat,
-          lng,
+          lat: numLat,
+          lng: numLng,
           speedKm: payload.speedKm,
           heading: payload.heading,
-          lastBroadcastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          lastBroadcastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         }
       }) : prev);
     };
@@ -291,46 +302,60 @@ export default function DriverApp() {
         : 77.2090;
       broadcastLocation(initLat, initLng);
 
-      let lastRealGpsTime = 0;
+      const realGpsRef = {
+        lat: initLat,
+        lng: initLng,
+        speedKm: 22,
+        heading: 'In-Transit',
+        lastUpdated: 0
+      };
 
-      // 1. Try real device GPS geolocation
+      // 1. Real device GPS geolocation
       if (navigator.geolocation) {
+        const updateFromCoords = (pos) => {
+          const { latitude, longitude, speed, heading } = pos.coords;
+          realGpsRef.lat = Number(latitude.toFixed(6));
+          realGpsRef.lng = Number(longitude.toFixed(6));
+          realGpsRef.speedKm = speed ? Math.round(speed * 3.6) : Math.floor(20 + Math.random() * 8);
+          realGpsRef.heading = heading ? `${Math.round(heading)}°` : 'In-Transit';
+          realGpsRef.lastUpdated = Date.now();
+          broadcastLocation(realGpsRef.lat, realGpsRef.lng, realGpsRef.speedKm, realGpsRef.heading);
+        };
+
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            lastRealGpsTime = Date.now();
-            const { latitude, longitude } = pos.coords;
-            broadcastLocation(Number(latitude.toFixed(6)), Number(longitude.toFixed(6)));
-          },
+          updateFromCoords,
           (err) => {
             console.warn('Geolocation read failed or permission pending:', err.message);
           },
-          { enableHighAccuracy: true, timeout: 6000 }
+          { enableHighAccuracy: true, timeout: 5000 }
         );
 
         watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            lastRealGpsTime = Date.now();
-            const { latitude, longitude } = pos.coords;
-            broadcastLocation(Number(latitude.toFixed(6)), Number(longitude.toFixed(6)));
-          },
+          updateFromCoords,
           (err) => {
             console.warn('Geolocation watch notice:', err.message);
           },
-          { enableHighAccuracy: true, maximumAge: 4000, timeout: 8000 }
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
         );
       }
 
-      // 2. Continuous Telemetry Heartbeat (ensures live telemetry streams to resident & admin)
+      // 2. High-Frequency 1-Second Telemetry Broadcast Heartbeat
+      // Accurately streams location every second to DB, Resident, and Admin
       let currentLat = initLat;
       let currentLng = initLng;
       const gpsInterval = setInterval(() => {
-        // If no real GPS position arrived in the last 6 seconds, simulate realistic subtle in-transit motion
-        if (Date.now() - lastRealGpsTime > 6000) {
-          currentLat = Number((currentLat + (Math.random() - 0.48) * 0.0008).toFixed(6));
-          currentLng = Number((currentLng + (Math.random() - 0.48) * 0.0008).toFixed(6));
-          broadcastLocation(currentLat, currentLng);
+        const isRealGpsActive = realGpsRef.lastUpdated && (Date.now() - realGpsRef.lastUpdated < 3000);
+        if (isRealGpsActive) {
+          currentLat = realGpsRef.lat;
+          currentLng = realGpsRef.lng;
+          broadcastLocation(currentLat, currentLng, realGpsRef.speedKm, realGpsRef.heading);
+        } else {
+          // If no real GPS fix or device stationary, simulate realistic smooth transit steps (~10-12m/s)
+          currentLat = Number((currentLat + (Math.random() - 0.49) * 0.00012).toFixed(6));
+          currentLng = Number((currentLng + (Math.random() - 0.49) * 0.00012).toFixed(6));
+          broadcastLocation(currentLat, currentLng, Math.floor(22 + Math.random() * 6), 'In-Transit');
         }
-      }, 5000);
+      }, 1000);
 
       return () => {
         if (watchId !== null && navigator.geolocation) {

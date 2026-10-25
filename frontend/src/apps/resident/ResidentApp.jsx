@@ -356,12 +356,18 @@ export default function ResidentApp() {
         const incomingDriverId = locData.driverMongoId ? String(locData.driverMongoId) : null;
         const assignedDriverId = prev.assignedDriver?.id ? String(prev.assignedDriver.id) : (prev.resident?.assignedDriverId ? String(prev.resident.assignedDriverId) : null);
 
-        // Match only if incoming driver is this resident's assigned driver OR exact sector matches
+        // Match only if incoming driver is this resident's assigned driver OR exact sector matches OR active emergency
         const isSameDriver = Boolean(incomingDriverId && assignedDriverId && incomingDriverId === assignedDriverId);
         const isSameSector = Boolean(residentSectorNorm && incomingSectorNorm && residentSectorNorm === incomingSectorNorm);
+        const isEmergencyDriver = Boolean(
+          prev.emergencyRequests?.some(e => 
+            (e.status === 'ON THE WAY' || e.status === 'DISPATCHED') && 
+            (String(e.assignedDriverId) === incomingDriverId || e.assignedDriverName === locData.driverName)
+          )
+        );
 
         // If this location update is from another sector or different driver, DO NOT accept it!
-        if (!isSameDriver && !isSameSector) {
+        if (!isSameDriver && !isSameSector && !isEmergencyDriver) {
           return prev;
         }
 
@@ -734,10 +740,10 @@ export default function ResidentApp() {
     socket.on('order-delivered', handleOrderDelivered);
     socket.on('order-status-updated', loadDashboard);
 
-    // Silent background polling every 6s for live location and doorstep proximity on serverless deployments
+    // Silent background polling every 5s for live location and doorstep proximity on serverless deployments
     const pollInterval = setInterval(() => {
       loadDashboard(true);
-    }, 6000);
+    }, 5000);
 
     return () => {
       clearInterval(pollInterval);

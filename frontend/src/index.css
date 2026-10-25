@@ -5,6 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 body {
   margin: 0;
   padding: 0;
@@ -92,6 +93,15 @@ body {
 .leaflet-div-icon {
   background: transparent !important;
   border: none !important;
+}
+
+/* Smooth Leaflet Vehicle Marker Glide Animation for 1-second real-time GPS updates */
+.custom-vehicle-leaflet-icon {
+  transition: transform 0.85s linear !important;
+}
+
+.leaflet-zoom-anim .custom-vehicle-leaflet-icon {
+  transition: none !important;
 }
 
 /* Dark Theme Global & Scoped Overrides */

@@ -154,14 +154,6 @@ export default function LocationPreviewModal({
                 </Popup>
               </Marker>
             )}
-
-            {/* Polyline Route if both exist */}
-            {hasDriverCoords && (
-              <Polyline
-                positions={[driverCoords, targetCoords]}
-                pathOptions={{ color: '#10b981', weight: 4, dashArray: '6, 8', opacity: 0.8 }}
-              />
-            )}
           </MapContainer>
 
           {/* Floating Telemetry Stats Badge */}
