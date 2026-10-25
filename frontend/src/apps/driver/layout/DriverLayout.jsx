@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Menu, X, ChevronRight, LogOut, Truck, Sun, Moon } from 'lucide-react';
+import { Sparkles, Menu, X, ChevronRight, LogOut, Truck, Sun, Moon, Power } from 'lucide-react';
 import DriverSidebar from './DriverSidebar';
 import DriverNotificationBell from '../components/DriverNotificationBell';
 
@@ -112,17 +112,22 @@ export default function DriverLayout({
             </div>
 
             {/* Duty Shift Toggle Button */}
-            {/* <button 
+            <button 
               type="button"
-              onClick={handleToggleDuty}
+              onClick={(e) => {
+                if (e && e.preventDefault) e.preventDefault();
+                if (handleToggleDuty) handleToggleDuty(e);
+              }}
               className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 shadow-2xs ${
-                isOnDuty ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                isOnDuty 
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700' 
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${isOnDuty ? 'bg-white animate-pulse' : 'bg-slate-500'}`}></span>
-              <span className="sm:hidden">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
-              <span className="hidden sm:inline">{isOnDuty ? 'Broadcasting Shift GPS' : 'Shift Inactive (Off Duty)'}</span>
-            </button> */}
+              <Power className="w-3.5 h-3.5" />
+              <span className="sm:hidden">{isOnDuty ? 'Clock Out' : 'Start Shift'}</span>
+              <span className="hidden sm:inline">{isOnDuty ? 'End Duty Shift' : 'Start Duty Shift'}</span>
+            </button>
 
             {/* Quick Dark / Light Theme Toggle */}
             <button

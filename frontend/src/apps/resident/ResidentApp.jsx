@@ -438,10 +438,10 @@ export default function ResidentApp() {
 
         if (isOnDuty) {
           soundManager.playDutyStartChime();
-          showToast(`🚚 Shift Started: Driver ${driverName || 'Municipal Driver'} (${vehicle || 'Truck'}) is now ON DUTY in ${sector}! Collection route active.`, 'success');
+          showToast(`Shift Started: Driver ${driverName || 'Municipal Driver'} (${vehicle || 'Truck'}) is now ON DUTY in ${sector}! Collection route active.`, 'success');
           addNotification({
             type: 'duty',
-            title: '🚚 Duty Shift Started',
+            title: 'Duty Shift Started',
             message: `Driver ${driverName || 'Municipal Driver'} (${vehicle || 'Truck'}) is now ON DUTY in ${sector}! Collection route active.`
           });
         } else {
@@ -450,10 +450,10 @@ export default function ResidentApp() {
             activeSirenStopRef.current = null;
           }
           setProximityAlert(null);
-          showToast('🅿️ Area Driver is OFF DUTY • Stationed at Base Depot', 'info');
+          showToast(' Area Driver is OFF DUTY • Stationed at Base Depot', 'info');
           addNotification({
             type: 'duty',
-            title: '🅿️ Driver Standby / Off Duty',
+            title: 'Driver Standby / Off Duty',
             message: `Driver ${driverName || 'Municipal Driver'} has concluded duty shift and is stationed at base depot.`
           });
         }

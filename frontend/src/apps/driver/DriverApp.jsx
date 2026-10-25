@@ -174,7 +174,8 @@ export default function DriverApp() {
       const json = await res.json();
       if (res.ok) {
         setData(json);
-        setIsOnDuty(Boolean(json.isOnDuty));
+        const resolvedDuty = Boolean(json.isOnDuty !== undefined ? json.isOnDuty : (json.driver?.isOnDuty || json.driverInfo?.isOnDuty));
+        setIsOnDuty(resolvedDuty);
 
         // Seed initial notifications if empty
         setNotifications(prev => {
@@ -249,7 +250,7 @@ export default function DriverApp() {
         driverName: driver.name || 'Fleet Operator',
         sector,
         vehicle: driver.assignedVehicle || 'Assigned Vehicle',
-        isOnDuty: true,
+        isOnDuty: Boolean(isOnDuty),
         lat: numLat,
         lng: numLng,
         speedKm,
@@ -271,7 +272,8 @@ export default function DriverApp() {
             lng: numLng,
             speedKm: payload.speedKm,
             heading: payload.heading,
-            sector: payload.sector
+            sector: payload.sector,
+            isOnDuty: Boolean(isOnDuty)
           })
         }).catch(() => null);
       }
@@ -523,7 +525,12 @@ export default function DriverApp() {
     try {
       // 1. Optimistic UI update so button flips immediately
       setIsOnDuty(nextDuty);
-      setData(prev => prev ? ({ ...prev, isOnDuty: nextDuty }) : prev);
+      setData(prev => prev ? ({ 
+        ...prev, 
+        isOnDuty: nextDuty,
+        driver: prev.driver ? { ...prev.driver, isOnDuty: nextDuty } : prev.driver,
+        driverInfo: prev.driverInfo ? { ...prev.driverInfo, isOnDuty: nextDuty } : prev.driverInfo
+      }) : prev);
 
       const currentDriver = data?.driver || data?.driverInfo || getLocalDriver();
       const currentSector = data?.activeSector || currentDriver?.activeSector || '';
@@ -543,27 +550,44 @@ export default function DriverApp() {
       const res = await fetch('/api/driver/toggle-duty', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ isOnDuty: nextDuty })
+        body: JSON.stringify({ 
+          isOnDuty: nextDuty,
+          driverId: currentDriver?.customId || currentDriver?._id
+        })
       });
 
       if (res.ok) {
         const result = await res.json();
+        const serverDuty = Boolean(result.isOnDuty);
+        setIsOnDuty(serverDuty);
         setData(prev => prev ? ({ 
           ...prev, 
-          isOnDuty: Boolean(result.isOnDuty),
+          isOnDuty: serverDuty,
+          driver: prev.driver ? { ...prev.driver, isOnDuty: serverDuty } : prev.driver,
+          driverInfo: prev.driverInfo ? { ...prev.driverInfo, isOnDuty: serverDuty } : prev.driverInfo,
           registeredLocation: result.registeredLocation || prev.registeredLocation
         }) : prev);
-        showToast(nextDuty ? '⚡ Shift Started: Live GPS Telemetry Broadcasting' : '🛑 Duty Shift Ended', 'info');
+        showToast(serverDuty ? 'Shift Started: Live GPS Telemetry Broadcasting' : ' Duty Shift Ended ', 'info');
       } else {
         // Revert on backend error
         setIsOnDuty(!nextDuty);
-        setData(prev => prev ? ({ ...prev, isOnDuty: !nextDuty }) : prev);
+        setData(prev => prev ? ({ 
+          ...prev, 
+          isOnDuty: !nextDuty,
+          driver: prev.driver ? { ...prev.driver, isOnDuty: !nextDuty } : prev.driver,
+          driverInfo: prev.driverInfo ? { ...prev.driverInfo, isOnDuty: !nextDuty } : prev.driverInfo
+        }) : prev);
         showToast('Failed to update shift status on server', 'error');
       }
     } catch (err) {
       // Revert on network exception
       setIsOnDuty(!nextDuty);
-      setData(prev => prev ? ({ ...prev, isOnDuty: !nextDuty }) : prev);
+      setData(prev => prev ? ({ 
+        ...prev, 
+        isOnDuty: !nextDuty,
+        driver: prev.driver ? { ...prev.driver, isOnDuty: !nextDuty } : prev.driver,
+        driverInfo: prev.driverInfo ? { ...prev.driverInfo, isOnDuty: !nextDuty } : prev.driverInfo
+      }) : prev);
       showToast('Network error updating shift status', 'error');
     }
   };

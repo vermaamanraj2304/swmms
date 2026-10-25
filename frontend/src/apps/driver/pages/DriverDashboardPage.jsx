@@ -63,7 +63,7 @@ export default function DriverDashboardPage({
           }`}
         >
           <Power className="w-4 h-4" />
-          <span>{isOnDuty ? 'End Duty Shift (Clock Out)' : 'Start Duty Shift (Begin Route)'}</span>
+          <span>{isOnDuty ? 'End Duty Shift ' : 'Start Duty Shift (Begin Route)'}</span>
         </button>
       </div>
       {/* Metrics Row */}

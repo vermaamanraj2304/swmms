@@ -263,8 +263,8 @@ export const getDriverDashboard = async (req, res) => {
     res.json({
       driver: driverPayload,
       driverInfo: driverPayload,
-      isOnDuty: driver?.isOnDuty || false,
-      isBroadcastingGPS: driver?.isBroadcastingGPS || false,
+      isOnDuty: Boolean(driver?.isOnDuty),
+      isBroadcastingGPS: Boolean(driver?.isBroadcastingGPS),
       liveLocation: driver?.liveLocation || null,
       registeredLocation: driverPayload?.registeredLocation || null,
       activeSector: driver?.activeSector || null,
@@ -468,8 +468,10 @@ export const updateLiveLocation = async (req, res) => {
     }
 
     if (driver) {
-      driver.isOnDuty = true;
-      driver.isBroadcastingGPS = true;
+      if (req.body.isOnDuty !== undefined) {
+        driver.isOnDuty = Boolean(req.body.isOnDuty);
+        driver.isBroadcastingGPS = Boolean(req.body.isOnDuty);
+      }
       driver.liveLocation = {
         lat: numLat,
         lng: numLng,
@@ -480,10 +482,18 @@ export const updateLiveLocation = async (req, res) => {
       };
       await driver.save();
 
-      await User.updateOne({ _id: driver._id }, {
+      const userSyncQuery = {
+        $or: [
+          ...(driver._id ? [{ _id: driver._id }] : []),
+          ...(driver.customId ? [{ customId: driver.customId }] : []),
+          ...(driver.email ? [{ email: driver.email }] : [])
+        ]
+      };
+
+      await User.updateMany(userSyncQuery, {
         $set: {
-          isOnDuty: true,
-          isBroadcastingGPS: true,
+          isOnDuty: driver.isOnDuty,
+          isBroadcastingGPS: driver.isBroadcastingGPS,
           liveLocation: driver.liveLocation
         }
       }).catch(() => null);
@@ -596,6 +606,8 @@ export const toggleDutyStatus = async (req, res) => {
           ...(driver.isOnDuty && driver.liveLocation ? { liveLocation: driver.liveLocation } : {})
         }
       }).catch(() => null);
+
+      await driver.save().catch(() => null);
 
       // Find all residents assigned to this driver to notify them
       const assignedResidents = await Resident.find({

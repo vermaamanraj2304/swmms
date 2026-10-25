@@ -44,7 +44,7 @@ export const handleSocketEvents = (io) => {
           driverName: existingDriver.name,
           sector: existingDriver.activeSector || data.sector || 'Municipal Route',
           vehicle: existingDriver.assignedVehicle || data.vehicle || 'Collection Truck',
-          isOnDuty: data.isOnDuty !== undefined ? Boolean(data.isOnDuty) : true,
+          isOnDuty: data.isOnDuty !== undefined ? Boolean(data.isOnDuty) : Boolean(existingDriver.isOnDuty),
           lat,
           lng,
           speedKm: data.speedKm || 20,
@@ -65,15 +65,23 @@ export const handleSocketEvents = (io) => {
         await Driver.updateOne({ _id: existingDriver._id }, {
           $set: {
             isOnDuty: payload.isOnDuty,
-            isBroadcastingGPS: true,
+            isBroadcastingGPS: payload.isOnDuty,
             liveLocation: payload.location
           }
         });
 
-        User.updateOne({ _id: existingDriver._id }, {
+        const userSyncQuery = {
+          $or: [
+            ...(existingDriver._id ? [{ _id: existingDriver._id }] : []),
+            ...(existingDriver.customId ? [{ customId: existingDriver.customId }] : []),
+            ...(existingDriver.email ? [{ email: existingDriver.email }] : [])
+          ]
+        };
+
+        await User.updateMany(userSyncQuery, {
           $set: {
             isOnDuty: payload.isOnDuty,
-            isBroadcastingGPS: true,
+            isBroadcastingGPS: payload.isOnDuty,
             liveLocation: payload.location
           }
         }).catch(() => null);
@@ -113,7 +121,16 @@ export const handleSocketEvents = (io) => {
             isBroadcastingGPS: isOnDuty
           }
         });
-        await User.updateOne({ _id: existingDriver._id }, {
+
+        const userSyncQuery = {
+          $or: [
+            ...(existingDriver._id ? [{ _id: existingDriver._id }] : []),
+            ...(existingDriver.customId ? [{ customId: existingDriver.customId }] : []),
+            ...(existingDriver.email ? [{ email: existingDriver.email }] : [])
+          ]
+        };
+
+        await User.updateMany(userSyncQuery, {
           $set: {
             isOnDuty,
             isBroadcastingGPS: isOnDuty
